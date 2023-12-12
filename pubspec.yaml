@@ -9,6 +9,7 @@ environment:
 
 dependencies:
   crypto: ^3.0.3
+  enough_convert: ^1.6.0
   path: ^1.8.0
   pointycastle: ^3.7.3
 

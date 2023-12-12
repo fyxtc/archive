@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:enough_convert/enough_convert.dart';
+
 import 'byte_order.dart';
 
 abstract class InputStreamBase {
@@ -68,11 +70,9 @@ class InputStream extends InputStreamBase {
   int byteOrder;
 
   /// Create a InputStream for reading from a List<int>
-  InputStream(dynamic data,
-      {this.byteOrder = LITTLE_ENDIAN, this.start = 0, int? length})
+  InputStream(dynamic data, {this.byteOrder = LITTLE_ENDIAN, this.start = 0, int? length})
       : buffer = data is TypedData
-            ? Uint8List.view(
-                data.buffer, data.offsetInBytes, data.lengthInBytes)
+            ? Uint8List.view(data.buffer, data.offsetInBytes, data.lengthInBytes)
             : data is List<int>
                 ? data
                 : List<int>.from(data as Iterable<dynamic>),
@@ -152,8 +152,7 @@ class InputStream extends InputStreamBase {
       length = _length - (position - start);
     }
 
-    return InputStream(buffer,
-        byteOrder: byteOrder, start: position, length: length);
+    return InputStream(buffer, byteOrder: byteOrder, start: position, length: length);
   }
 
   /// Returns the position of the given [value] within the buffer, starting
@@ -161,9 +160,7 @@ class InputStream extends InputStreamBase {
   /// returned is relative to the start of the buffer, or -1 if the [value]
   /// was not found.
   int indexOf(int value, [int offset = 0]) {
-    for (var i = this.offset + offset, end = this.offset + length;
-        i < end;
-        ++i) {
+    for (var i = this.offset + offset, end = this.offset + length; i < end; ++i) {
       if (buffer[i] == value) {
         return i - start;
       }
@@ -214,18 +211,36 @@ class InputStream extends InputStreamBase {
         }
         codes.add(c);
       }
-      return utf8 ? Utf8Decoder().convert(codes) : String.fromCharCodes(codes);
+      // return utf8 ? Utf8Decoder().convert(codes) : String.fromCharCodes(codes);
+      try {
+        final str = utf8 ? Utf8Decoder().convert(codes) : String.fromCharCodes(codes);
+        return str;
+      } catch (err) {
+        try {
+          final str = GbkCodec(allowInvalid: false).decode(codes);
+          return str;
+        } catch (gbkError) {
+          // If the string is not a valid UTF8 string or gbk string, decode it as character codes.
+          return String.fromCharCodes(codes);
+        }
+      }
     }
 
     final s = readBytes(size);
     final bytes = s.toUint8List();
     try {
-      final str =
-          utf8 ? Utf8Decoder().convert(bytes) : String.fromCharCodes(bytes);
+      final str = utf8 ? Utf8Decoder().convert(bytes) : String.fromCharCodes(bytes);
       return str;
     } catch (err) {
       // If the string is not a valid UTF8 string, decode it as character codes.
-      return String.fromCharCodes(bytes);
+      // return String.fromCharCodes(bytes);
+      try {
+        final str = GbkCodec(allowInvalid: false).decode(bytes);
+        return str;
+      } catch (gbkError) {
+        // If the string is not a valid UTF8 string or gbk string, decode it as character codes.
+        return String.fromCharCodes(bytes);
+      }
     }
   }
 

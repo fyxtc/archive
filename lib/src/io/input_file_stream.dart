@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:enough_convert/enough_convert.dart';
+
 import 'file_buffer.dart';
 import '../util/archive_exception.dart';
 import '../util/byte_order.dart';
@@ -15,8 +17,7 @@ class InputFileStream extends InputStreamBase {
   int _position;
 
   InputFileStream(this.path,
-      {this.byteOrder = LITTLE_ENDIAN,
-      int bufferSize = FileBuffer.kDefaultBufferSize})
+      {this.byteOrder = LITTLE_ENDIAN, int bufferSize = FileBuffer.kDefaultBufferSize})
       : _file = FileBuffer(path),
         _fileOffset = 0,
         _position = 0 {
@@ -157,8 +158,7 @@ class InputFileStream extends InputStreamBase {
     if ((_position + count) > _fileSize) {
       count = _fileSize - _position;
     }
-    final bytes =
-        InputFileStream.clone(this, position: _position, length: count);
+    final bytes = InputFileStream.clone(this, position: _position, length: count);
     _position += bytes.length;
     return bytes;
   }
@@ -180,9 +180,19 @@ class InputFileStream extends InputStreamBase {
       while (!isEOS) {
         var c = readByte();
         if (c == 0) {
-          return utf8
-              ? Utf8Decoder().convert(codes)
-              : String.fromCharCodes(codes);
+          // return utf8 ? Utf8Decoder().convert(codes) : String.fromCharCodes(codes);
+          try {
+            final str = utf8 ? Utf8Decoder().convert(codes) : String.fromCharCodes(codes);
+            return str;
+          } catch (err) {
+            try {
+              final str = GbkCodec(allowInvalid: false).decode(codes);
+              return str;
+            } catch (gbkError) {
+              // If the string is not a valid UTF8 string or gbk string, decode it as character codes.
+              return String.fromCharCodes(codes);
+            }
+          }
         }
         codes.add(c);
       }
@@ -191,9 +201,20 @@ class InputFileStream extends InputStreamBase {
 
     final s = readBytes(size);
     final bytes = s.toUint8List();
-    final str =
-        utf8 ? Utf8Decoder().convert(bytes) : String.fromCharCodes(bytes);
-    return str;
+    // final str = utf8 ? Utf8Decoder().convert(bytes) : String.fromCharCodes(bytes);
+    // return str;
+    try {
+      final str = utf8 ? Utf8Decoder().convert(bytes) : String.fromCharCodes(bytes);
+      return str;
+    } catch (err) {
+      try {
+        final str = GbkCodec(allowInvalid: false).decode(bytes);
+        return str;
+      } catch (gbkError) {
+        // If the string is not a valid UTF8 string or gbk string, decode it as character codes.
+        return String.fromCharCodes(bytes);
+      }
+    }
   }
 
   FileBuffer get file => _file;

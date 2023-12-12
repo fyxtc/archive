@@ -1,4 +1,4 @@
-name: archive
+name: archive_gbk
 version: 3.4.9
 description: >-
   Provides encoders and decoders for various archive and compression formats
